@@ -1092,7 +1092,13 @@ def main() -> None:
     from edgar import set_identity
 
     set_identity(IDENTITY)
-    mcp.run()
+    transport = os.environ.get("EDGAR_MCP_TRANSPORT", "stdio")
+    if transport in ("streamable-http", "http"):
+        mcp.settings.host = os.environ.get("EDGAR_MCP_HOST", "0.0.0.0")
+        mcp.settings.port = int(os.environ.get("EDGAR_MCP_PORT", "8000"))
+        mcp.run(transport="streamable-http")
+    else:
+        mcp.run()
 
 
 if __name__ == "__main__":
