@@ -39,6 +39,13 @@ cached in SQLite at `~/.cache/edgar-mcp/`).
 | `statement_history` | one statement stitched across N filings — long multi-year (or multi-quarter) table, concepts aligned across label changes |
 | `compare_peers` | one concept across ALL SEC filers for one period (Frames API) — economy-wide or a specific CIK list |
 
+**Forensic** (evidence-first; nothing adjusted without a human decision)
+| tool | what it does |
+|---|---|
+| `forensic_scan` | the CFA-style mega-checklist: add-back items with recurrence, pension (funded status vs equity, discount-rate & expected-return assumptions, non-service cost), operating-lease capitalization & lease-adjusted debt, JV/equity-method one-line consolidation, discontinued ops, tax forensics (valuation-allowance changes, unrecognized tax benefits, ETR swings), working capital days, capital structure & interest coverage, non-operating reliance, capitalization policy, Beneish M-score, SBC-vs-buyback offset. **Every finding cites its exact tagged facts; every judgment call is surfaced as pre-quantified options, never auto-applied** |
+| `apply_adjustments` | deterministic adjusted EBIT → pre-tax → NI → EPS bridge from the analyst's decisions (finding_id → option_id); same filing + same decisions = same numbers, ledger included |
+| `restatement_check` | 8-K Item 4.01 (auditor change) / 4.02 (non-reliance), 10-K/A / 10-Q/A amendments, NT late-filing notices |
+
 **Analyst** (quality of earnings)
 | tool | what it does |
 |---|---|

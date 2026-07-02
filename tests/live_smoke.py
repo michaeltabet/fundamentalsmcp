@@ -58,6 +58,13 @@ if af:
     assert af["adjustment_flags"], "expected at least an SBC flag on AAPL"
     assert "eps_decomposition" in af["diagnostics"], "expected EPS decomposition"
 check("compare_companies", s.compare_companies, "AAPL", "MSFT")
+fs_ = check("forensic_scan", s.forensic_scan, AAPL_10K)
+if fs_:
+    assert fs_["findings"], "expected forensic findings on AAPL"
+    assert all(f.get("evidence") is not None for f in fs_["findings"])
+    assert fs_["judgments_pending"], "expected pending judgments"
+check("apply_adjustments defaults", s.apply_adjustments, AAPL_10K)
+check("restatement_check", s.restatement_check, "SMCI", years=3)
 
 # form diversity: 10-Q part-item, 8-K item, Form 10 (spin-off)
 from edgar import Company

@@ -10,11 +10,12 @@ Layered tool surface:
 
 from __future__ import annotations
 
+import datetime as dt
 import os
 
 from mcp.server.fastmcp import FastMCP
 
-from . import quality, taxonomy
+from . import forensic, quality, taxonomy
 from .util import (
     IDENTITY,
     company_for,
@@ -837,6 +838,109 @@ def analyst_flags(accession_no: str) -> str:
     """
     x = xbrl_for(accession_no)
     return jdump(quality.analyze(x), max_chars=60_000)
+
+
+@mcp.tool()
+def forensic_scan(accession_no: str, severity_min: str = "info") -> str:
+    """The full CFA-style forensic checklist on one filing — every finding
+    evidence-backed, every judgment call surfaced for the human to decide.
+
+    Checks: classic add-back items (SBC, restructuring, impairments,
+    intangible amortization, one-time gains/losses) with recurrence;
+    pension (funded status, discount-rate & expected-return assumptions,
+    non-service cost in earnings); operating-lease capitalization and
+    lease-adjusted debt; equity-method/JV one-line consolidation;
+    discontinued operations; tax forensics (valuation allowance changes,
+    unrecognized tax benefits, ETR swings); working capital (receivables/
+    inventory vs sales, days); capital structure (net debt, current
+    portion, interest coverage, NCI); non-operating earnings reliance;
+    capitalization policy (capex vs D&A, capitalized software); Beneish
+    M-score; SBC dilution vs buyback offset.
+
+    Every finding cites the exact tagged facts (verify any with
+    explain_number). Findings needing a judgment carry an options block
+    with each option's quantified effect — collect the analyst's choices
+    and pass them to apply_adjustments. Nothing is adjusted silently.
+    `severity_min`: info | caution | red_flag filters the output.
+    """
+    x = xbrl_for(accession_no)
+    out = forensic.scan(x, accession_no)
+    order = {"info": 2, "caution": 1, "red_flag": 0}
+    cut = order.get(severity_min, 2)
+    out["findings"] = [
+        f for f in out["findings"] if order.get(f["severity"], 3) <= cut
+    ]
+    return jdump(out, max_chars=80_000)
+
+
+@mcp.tool()
+def apply_adjustments(accession_no: str, decisions: dict | None = None) -> str:
+    """Build the adjusted-earnings bridge from the analyst's decisions on
+    forensic_scan findings. Deterministic and reproducible: same filing +
+    same decisions = same numbers, with the full ledger.
+
+    `decisions` maps finding_id -> option_id (both from forensic_scan),
+    e.g. {"restructuring:RestructuringCharges": "keep_as_expense",
+    "one_time_gain_loss:GainsLossesOnExtinguishmentOfDebt": "strip",
+    "tax:etr_swing": "avg_3y"}. Omitted findings use their stated default
+    (defaults are conservative: SBC stays an expense, recurring
+    restructuring stays a cost). Returns reported -> adjusted EBIT,
+    pre-tax, net income and diluted EPS, with each decision's effect and
+    evidence in the ledger.
+    """
+    x = xbrl_for(accession_no)
+    return jdump(forensic.apply_decisions(x, accession_no, decisions or {}))
+
+
+@mcp.tool()
+def restatement_check(company: str, years: int = 3) -> str:
+    """Restatement / auditor red-flag sweep of a company's filing history.
+
+    Looks for: 8-K Item 4.01 (auditor change) and Item 4.02 (non-reliance
+    on previously issued financials — the restatement bomb), amended
+    annual/quarterly reports (10-K/A, 10-Q/A), and late-filing notices
+    (NT 10-K / NT 10-Q). Any 4.02 is a major earnings-quality event.
+    """
+    c = company_for(company)
+    cutoff = None
+    try:
+        cutoff = (dt.date.today() - dt.timedelta(days=365 * years)).isoformat()
+    except Exception:
+        pass
+    hits: dict[str, list] = {"auditor_change_8k_401": [], "non_reliance_8k_402": [],
+                             "amended_reports": [], "late_filings": []}
+    for f in c.get_filings(form=["8-K", "10-K/A", "10-Q/A", "NT 10-K", "NT 10-Q"]).head(300):
+        fd = str(f.filing_date)
+        if cutoff and fd < cutoff:
+            break
+        rec = {"accession_no": f.accession_no, "form": f.form, "filed": fd}
+        if f.form == "8-K":
+            raw = getattr(f, "items", None) or ""
+            items = raw if isinstance(raw, str) else ",".join(raw)
+            if "4.01" in items:
+                hits["auditor_change_8k_401"].append(rec | {"items": items})
+            if "4.02" in items:
+                hits["non_reliance_8k_402"].append(rec | {"items": items})
+        elif f.form.endswith("/A"):
+            hits["amended_reports"].append(rec)
+        else:
+            hits["late_filings"].append(rec)
+    clean = not any(hits.values())
+    return jdump(
+        {
+            "company": c.name,
+            "window_years": years,
+            "clean": clean,
+            "read": (
+                "no restatement/auditor red flags in the window"
+                if clean
+                else "review each hit — a 4.02 non-reliance means previously"
+                " reported numbers were wrong; amendments can be routine"
+                " (exhibits) or substantive (read the amendment's cover)"
+            ),
+            **hits,
+        }
+    )
 
 
 @mcp.tool()
