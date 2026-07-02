@@ -39,6 +39,12 @@ cached in SQLite at `~/.cache/edgar-mcp/`).
 | `statement_history` | one statement stitched across N filings — long multi-year (or multi-quarter) table, concepts aligned across label changes |
 | `compare_peers` | one concept across ALL SEC filers for one period (Frames API) — economy-wide or a specific CIK list |
 
+**Analyst** (quality of earnings)
+| tool | what it does |
+|---|---|
+| `analyst_flags` | flags the adjustments an analyst would flag — SBC, restructuring, impairments, one-time gains/losses above the tax line, intangible amortization, capitalized costs — each with calc-tree placement (is it inside EPS?), % of revenue / operating / pre-tax income, recurrence across periods, and the implication spelled out. Plus computed diagnostics: cash conversion, accruals, receivables-vs-revenue, ETR swings, EPS growth split into earnings vs buybacks |
+| `compare_companies` | the full quality scan on two companies side by side, common-sized (each adjustment category as % of that company's own revenue/pre-tax) so they compare directly |
+
 **Ownership**
 | tool | what it does |
 |---|---|

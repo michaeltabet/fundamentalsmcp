@@ -14,7 +14,7 @@ import os
 
 from mcp.server.fastmcp import FastMCP
 
-from . import taxonomy
+from . import quality, taxonomy
 from .util import (
     IDENTITY,
     company_for,
@@ -812,6 +812,94 @@ def compare_peers(
             "companies": rows,
         }
     )
+
+
+# --------------------------------------------------------------------------- #
+# analyst layer
+# --------------------------------------------------------------------------- #
+
+
+@mcp.tool()
+def analyst_flags(accession_no: str) -> str:
+    """Quality-of-earnings scan: flag the adjustments an analyst would flag
+    in this filing, with placement, sizing, recurrence and implications.
+
+    Scans the tagged facts for stock-based comp, restructuring,
+    impairments, one-time gains/losses, acquired-intangible amortization,
+    capitalized costs and pension/non-operating items. For each flag:
+    where it sits in the calculation tree (inside operating income? above
+    the tax line and therefore inside EPS?), its size as % of revenue /
+    operating income / pre-tax income, whether it RECURS across the
+    filing's periods, and the analyst implication spelled out. Plus
+    computed diagnostics the tags don't state: cash conversion (CFO vs
+    net income), accruals, receivables-vs-revenue growth, effective tax
+    rate swings, and EPS growth decomposed into earnings vs buybacks.
+    """
+    x = xbrl_for(accession_no)
+    return jdump(quality.analyze(x), max_chars=60_000)
+
+
+@mcp.tool()
+def compare_companies(
+    company_a: str, company_b: str, form: str = "10-K"
+) -> str:
+    """Side-by-side quality-of-earnings comparison of two companies'
+    latest filings (default 10-K), common-sized so they are comparable.
+
+    Runs the full analyst_flags scan on both and lines up: margins and
+    benchmarks as % of revenue, each adjustment category as % of revenue
+    and % of pre-tax income, and the diagnostics (cash conversion, ETR,
+    EPS decomposition, receivables trend). Use analyst_flags on each
+    accession_no for the full per-item detail.
+    """
+    reports = {}
+    for label, ident in [("a", company_a), ("b", company_b)]:
+        c = company_for(ident)
+        f = c.latest(form)
+        if f is None:
+            return jdump({"error": f"{c.name} has no {form} filings"})
+        reports[label] = {
+            "accession_no": f.accession_no,
+            "report": quality.analyze(xbrl_for(f.accession_no)),
+        }
+
+    def common_size(rep: dict) -> dict:
+        flags_by_cat: dict[str, dict] = {}
+        for fl in rep["adjustment_flags"]:
+            cat = flags_by_cat.setdefault(
+                fl["category"],
+                {"pct_of_revenue": 0.0, "pct_of_pretax_income": 0.0, "recurring": False},
+            )
+            cat["pct_of_revenue"] += fl["pct_of_revenue"] or 0
+            cat["pct_of_pretax_income"] += fl["pct_of_pretax_income"] or 0
+            cat["recurring"] = cat["recurring"] or fl["recurring"]
+        for cat in flags_by_cat.values():
+            cat["pct_of_revenue"] = round(cat["pct_of_revenue"], 1)
+            cat["pct_of_pretax_income"] = round(cat["pct_of_pretax_income"], 1)
+        return flags_by_cat
+
+    out = {
+        "companies": {
+            lbl: {
+                "entity": r["report"]["entity"],
+                "accession_no": r["accession_no"],
+                "period": r["report"]["period_of_report"],
+                "benchmarks": r["report"]["benchmarks"],
+                "adjustments_by_category_common_sized": common_size(r["report"]),
+                "diagnostics": r["report"]["diagnostics"],
+            }
+            for lbl, r in reports.items()
+        },
+        "how_to_read": (
+            "adjustments_by_category_common_sized: each category's current-"
+            "period total as % of that company's own revenue and pre-tax"
+            " income — compare across the two companies directly. A category"
+            " marked recurring should generally NOT be treated as one-time."
+            " Drill into any item with analyst_flags(accession_no) and"
+            " explain_number."
+        ),
+    }
+    return jdump(out, max_chars=60_000)
 
 
 # --------------------------------------------------------------------------- #

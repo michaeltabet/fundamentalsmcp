@@ -53,6 +53,11 @@ check("insider_transactions", s.insider_transactions, "AAPL", limit=2)
 check("statement_history", s.statement_history, "AAPL", statement="income", n_filings=2, max_rows=5)
 check("compare_peers", s.compare_peers, "us-gaap:GrossProfit", "CY2024", limit=5)
 check("fund_holdings", s.fund_holdings, "1067983", limit=5)
+af = check("analyst_flags", s.analyst_flags, AAPL_10K)
+if af:
+    assert af["adjustment_flags"], "expected at least an SBC flag on AAPL"
+    assert "eps_decomposition" in af["diagnostics"], "expected EPS decomposition"
+check("compare_companies", s.compare_companies, "AAPL", "MSFT")
 
 # form diversity: 10-Q part-item, 8-K item, Form 10 (spin-off)
 from edgar import Company
