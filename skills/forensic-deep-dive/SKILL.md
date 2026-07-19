@@ -75,6 +75,21 @@ Then chase the categories the engines under-detect, using the store +
 - **JV / equity-method** one-line consolidation; **discontinued ops**;
   **tax forensics** (valuation-allowance moves, UTBs, ETR swings);
   **SBC-vs-buyback** offset.
+- **M&A / deal effects:** acquisition & integration costs, amortization of
+  acquired intangibles (add back to see organic margins), bargain-purchase or
+  step-up gains, contingent-consideration remeasurement, goodwill impairment.
+  `search_facts(acc, "acquisition")`, `search_facts(acc, "amortization of
+  intangible")`, `search_facts(acc, "goodwill")`; concepts like
+  `AmortizationOfIntangibleAssets`, `BusinessCombination*`,
+  `GoodwillImpairmentLoss`. Flag whether the "adjusted" number the company
+  reports already strips these (and whether that flatters a serial acquirer).
+- **Capex / big spend:** capex vs D&A (are they under-investing to flatter
+  FCF, or is a spend spike temporary?), capitalized software/R&D and other
+  capitalization-policy choices that shift cost off the P&L, large one-time
+  builds. `search_facts(acc, "capital expenditure")`,
+  `PaymentsToAcquirePropertyPlantAndEquipment`, `CapitalizedComputerSoftware*`,
+  `CapitalizedContractCostNet`. A capex spike isn't an earnings add-back — but
+  capitalized-cost choices ARE an earnings-quality adjustment; size both.
 For each candidate, use the store to test recurrence across the warmed years:
 ```sql
 SELECT fiscal_year, max(numeric_value) AS val
