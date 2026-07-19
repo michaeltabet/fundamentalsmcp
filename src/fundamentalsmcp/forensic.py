@@ -253,7 +253,8 @@ ADJ_ITEMS = {
         True,
     ),
     "intangible_amortization": (
-        ["us-gaap_AmortizationOfIntangibleAssets", "us-gaap_FiniteLivedIntangibleAssetsAmortizationExpense"],
+        ["us-gaap_AmortizationOfIntangibleAssets",
+         "us-gaap_FiniteLivedIntangibleAssetsAmortizationExpense"],
         "amortization of acquired intangibles",
         "keep_as_expense",
         True,
@@ -306,7 +307,8 @@ def check_adjustment_items(s: FactStore):
             is_gain_item = key == "one_time_gain_loss" and "Expense" not in concept
             delta_if_removed = -cur if is_gain_item else cur
             judgment = {
-                "question": f"How should {title} ({fmt_value(cur)}) be treated in adjusted earnings?",
+                "question": f"How should {title} ({fmt_value(cur)}) be treated"
+                " in adjusted earnings?",
                 "options": [
                     {
                         "id": "keep_as_expense" if not is_gain_item else "keep",
@@ -372,7 +374,6 @@ def check_pension(s: FactStore):
         ["us-gaap_DefinedBenefitPlanAssumptionsUsedCalculatingNetPeriodicBenefitCostExpectedLongTermReturnOnAssets"],
         "Pension",
     )
-    nonsvc = None
     _, nonsvc_v = s.get(
         ["us-gaap_NetPeriodicDefinedBenefitsExpenseReversalOfExpenseExcludingServiceCostComponent"]
     )
@@ -382,7 +383,6 @@ def check_pension(s: FactStore):
             "Pension",
         )
         nonsvc_v = d["value"] if d else None
-        nonsvc = d
     if not any([assets, pbo, funded]):
         return out
 
@@ -398,7 +398,7 @@ def check_pension(s: FactStore):
             f" {fmt_value(pbo['value'])} = {fmt_value(fs)}"
         )
     ev = []
-    for d, c in [
+    for d, _c in [
         (funded, "us-gaap:DefinedBenefitPlanFundedStatusOfPlan"),
         (assets, "us-gaap:DefinedBenefitPlanFairValueOfPlanAssets"),
         (pbo, "us-gaap:DefinedBenefitPlanBenefitObligation"),
@@ -418,8 +418,12 @@ def check_pension(s: FactStore):
     metrics = {
         "funded_status": fs,
         "funded_status_pct_of_equity": pctf(fs, equity),
-        "discount_rate_pct": disc["value"] * 100 if disc and disc["value"] and disc["value"] < 1 else (disc["value"] if disc else None),
-        "expected_return_on_assets_pct": eror["value"] * 100 if eror and eror["value"] and eror["value"] < 1 else (eror["value"] if eror else None),
+        "discount_rate_pct": disc["value"] * 100
+        if disc and disc["value"] and disc["value"] < 1
+        else (disc["value"] if disc else None),
+        "expected_return_on_assets_pct": eror["value"] * 100
+        if eror and eror["value"] and eror["value"] < 1
+        else (eror["value"] if eror else None),
         "non_service_pension_cost_in_earnings": nonsvc_v,
     }
     severity = "info"
@@ -433,7 +437,8 @@ def check_pension(s: FactStore):
             "question": "Non-service pension cost sits in earnings — reclassify"
             " below operating (IFRS-style) for comparability?",
             "options": [
-                {"id": "as_reported", "label": "leave as reported", "ebit_delta": 0, "pretax_delta": 0},
+                {"id": "as_reported", "label": "leave as reported",
+                 "ebit_delta": 0, "pretax_delta": 0},
                 {
                     "id": "reclassify_below_operating",
                     "label": "move non-service cost out of operating income",
@@ -469,8 +474,8 @@ def check_leases(s: FactStore):
     out = []
     _, op_liab = s.inst(["us-gaap_OperatingLeaseLiability"])
     if op_liab is None:
-        c1, v1 = s.inst(["us-gaap_OperatingLeaseLiabilityCurrent"])
-        c2, v2 = s.inst(["us-gaap_OperatingLeaseLiabilityNoncurrent"])
+        _, v1 = s.inst(["us-gaap_OperatingLeaseLiabilityCurrent"])
+        _, v2 = s.inst(["us-gaap_OperatingLeaseLiabilityNoncurrent"])
         op_liab = (v1 or 0) + (v2 or 0) if (v1 or v2) else None
     _, rou = s.inst(["us-gaap_OperatingLeaseRightOfUseAsset"])
     _, fin_liab = s.inst(["us-gaap_FinanceLeaseLiability"])
@@ -502,7 +507,8 @@ def check_leases(s: FactStore):
                 "lease_adjusted_debt": debt + op_liab,
                 "op_leases_pct_of_debt": pctf(op_liab, debt),
             },
-            formula=f"lease-adjusted debt = {fmt_value(debt)} + {fmt_value(op_liab)} = {fmt_value(debt + op_liab)}",
+            formula=f"lease-adjusted debt = {fmt_value(debt)} +"
+            f" {fmt_value(op_liab)} = {fmt_value(debt + op_liab)}",
             implication=(
                 "rating agencies treat operating leases as debt. If leases are"
                 " a large share of adjusted debt, EBIT (which excludes the"
@@ -512,8 +518,11 @@ def check_leases(s: FactStore):
             judgment={
                 "question": "Capitalize operating leases into debt for leverage metrics?",
                 "options": [
-                    {"id": "capitalize", "label": "yes — lease-adjusted debt (rating-agency style)", "ebit_delta": 0, "pretax_delta": 0},
-                    {"id": "as_reported", "label": "no — reported debt only", "ebit_delta": 0, "pretax_delta": 0},
+                    {"id": "capitalize",
+                     "label": "yes — lease-adjusted debt (rating-agency style)",
+                     "ebit_delta": 0, "pretax_delta": 0},
+                    {"id": "as_reported", "label": "no — reported debt only",
+                     "ebit_delta": 0, "pretax_delta": 0},
                 ],
                 "default": "capitalize",
             },
@@ -587,8 +596,11 @@ def check_discontinued(s: FactStore):
             judgment={
                 "question": "Which earnings base for analysis?",
                 "options": [
-                    {"id": "continuing_only", "label": "continuing operations only", "ebit_delta": 0, "pretax_delta": 0},
-                    {"id": "total", "label": "total incl. discontinued", "ebit_delta": 0, "pretax_delta": 0},
+                    {"id": "continuing_only",
+                     "label": "continuing operations only",
+                     "ebit_delta": 0, "pretax_delta": 0},
+                    {"id": "total", "label": "total incl. discontinued",
+                     "ebit_delta": 0, "pretax_delta": 0},
                 ],
                 "default": "continuing_only",
             },
@@ -652,7 +664,7 @@ def check_tax_forensics(s: FactStore):
         pre_s.append(v)
     etr = [
         round(100 * t / p, 1) if t is not None and p else None
-        for t, p in zip(tax_s, pre_s)
+        for t, p in zip(tax_s, pre_s, strict=False)
     ]
     real = [e for e in etr if e is not None]
     if len(real) >= 2 and abs(real[0] - real[1]) > 3:
@@ -667,15 +679,21 @@ def check_tax_forensics(s: FactStore):
                     for i in range(min(len(etr), 3))
                     if tax_s[i] is not None
                 ],
-                metrics={"etr_by_period": dict(zip(s.periods, etr))},
+                metrics={"etr_by_period": dict(zip(s.periods, etr, strict=False))},
                 formula="ETR = IncomeTaxExpenseBenefit / pre-tax income, per period",
                 implication="the EPS change is partly a tax-line event, not operations",
                 judgment={
                     "question": "Which tax rate for the adjusted-earnings bridge?",
                     "options": [
-                        {"id": "company_etr", "label": f"company current ETR ({real[0]}%)", "ebit_delta": 0, "pretax_delta": 0},
-                        {"id": "statutory_21", "label": "US statutory 21%", "ebit_delta": 0, "pretax_delta": 0},
-                        {"id": "avg_3y", "label": f"3-period average ({round(sum(real)/len(real),1)}%)", "ebit_delta": 0, "pretax_delta": 0},
+                        {"id": "company_etr",
+                         "label": f"company current ETR ({real[0]}%)",
+                         "ebit_delta": 0, "pretax_delta": 0},
+                        {"id": "statutory_21", "label": "US statutory 21%",
+                         "ebit_delta": 0, "pretax_delta": 0},
+                        {"id": "avg_3y",
+                         "label": f"3-period average"
+                         f" ({round(sum(real) / len(real), 1)}%)",
+                         "ebit_delta": 0, "pretax_delta": 0},
                     ],
                     "default": "avg_3y",
                 },
@@ -830,8 +848,15 @@ def check_fx_derivatives(s: FactStore):
     out = []
     notional = _concept_scan(s, r"DerivativeNotional|NotionalAmount")
     dv_asset = _concept_scan(s, r"DerivativeFairValueOfDerivativeAsset|DerivativeAssets?$", 4)
-    dv_liab = _concept_scan(s, r"DerivativeFairValueOfDerivativeLiabilit|DerivativeLiabilit(?:y|ies)$", 4)
-    pnl = _concept_scan(s, r"GainLossOnDerivativeInstruments|DerivativeInstrumentsNotDesignatedAsHedgingInstrumentsGainLoss", 6)
+    dv_liab = _concept_scan(
+        s, r"DerivativeFairValueOfDerivativeLiabilit|DerivativeLiabilit(?:y|ies)$", 4
+    )
+    pnl = _concept_scan(
+        s,
+        r"GainLossOnDerivativeInstruments"
+        r"|DerivativeInstrumentsNotDesignatedAsHedgingInstrumentsGainLoss",
+        6,
+    )
     oci = _concept_scan(s, r"CashFlowHedgeGainLoss|OtherComprehensiveIncomeLossDerivative", 6)
     fx = _concept_scan(s, r"ForeignCurrencyTransactionGainLoss", 4)
     if not any((notional, dv_asset, dv_liab, pnl, oci, fx)):
@@ -874,7 +899,8 @@ def check_fx_derivatives(s: FactStore):
                 "default": "keep",
                 "options": [
                     {"id": "keep", "label": "keep as reported"},
-                    {"id": "strip", "label": "strip derivative gains/losses from adjusted earnings"},
+                    {"id": "strip",
+                     "label": "strip derivative gains/losses from adjusted earnings"},
                 ],
             },
         )
@@ -1026,7 +1052,8 @@ def check_nonop_reliance(s: FactStore):
             " the tax line",
             [s.ev(EBIT[0], ebit), s.ev(PRETAX[0], pretax)],
             metrics={"non_operating_bridge": gap, "pct_of_pretax": share},
-            formula=f"bridge = pre-tax {fmt_value(pretax)} − EBIT {fmt_value(ebit)} = {fmt_value(gap)}",
+            formula=f"bridge = pre-tax {fmt_value(pretax)} − EBIT"
+            f" {fmt_value(ebit)} = {fmt_value(gap)}",
             implication=(
                 "interest income, equity income, pension non-service items and"
                 " one-offs live here — earnings driven from this zone are"
@@ -1157,7 +1184,8 @@ def check_beneish(s: FactStore):
             "beneish_m_score",
             sev,
             f"Beneish M-score {score}"
-            + (" — ABOVE the -1.78 manipulation threshold" if sev == "red_flag" else " (below -1.78 threshold)")
+            + (" — ABOVE the -1.78 manipulation threshold"
+               if sev == "red_flag" else " (below -1.78 threshold)")
             if score is not None
             else "Beneish M-score not computable (missing inputs)",
             [],
@@ -1198,7 +1226,8 @@ def check_sbc_extras(s: FactStore):
             "compensation",
             "info",
             f"SBC {fmt_value(sbc)}; buybacks {fmt_value(abs(buyback) if buyback else None)}"
-            + (f" ({metrics['buyback_to_sbc_ratio']}x SBC)" if metrics["buyback_to_sbc_ratio"] else ""),
+            + (f" ({metrics['buyback_to_sbc_ratio']}x SBC)"
+               if metrics["buyback_to_sbc_ratio"] else ""),
             [
                 s.ev("us-gaap_ShareBasedCompensation", sbc),
                 s.ev(

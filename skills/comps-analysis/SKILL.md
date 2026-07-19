@@ -1,11 +1,11 @@
 ---
 name: comps-analysis
-description: Adjustment-first comparable-companies analysis and multi-year time-series analysis of SEC filers, built on the edgar MCP. Use when the user asks to "comp" companies, compare fundamentals across peers, analyze a company over time, build an adjusted-earnings bridge, or asks how a company's reported numbers differ from its economic reality. Every number must carry provenance (accession + XBRL tag).
+description: Adjustment-first comparable-companies analysis and multi-year time-series analysis of SEC filers, built on the fundamentals MCP. Use when the user asks to "comp" companies, compare fundamentals across peers, analyze a company over time, build an adjusted-earnings bridge, or asks how a company's reported numbers differ from its economic reality. Every number must carry provenance (accession + XBRL tag).
 ---
 
 # Comps & time-series analysis (adjustment-first)
 
-You are running a fundamental analyst workflow on top of the `edgar` MCP
+You are running a fundamental analyst workflow on top of the `fundamentals` MCP
 server. Two modes: **COMPS** (cross-sectional, N companies, one period) and
 **TIME-SERIES** (one company, many periods). Both share the same iron rules.
 

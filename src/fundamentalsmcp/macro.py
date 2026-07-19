@@ -22,14 +22,14 @@ from . import store
 BASE = "https://api.stlouisfed.org/fred"
 
 
-class FredKeyMissing(RuntimeError):
+class FredKeyMissingError(RuntimeError):
     pass
 
 
 def _key() -> str:
     key = os.environ.get("FRED_API_KEY", "").strip()
     if not key:
-        raise FredKeyMissing(
+        raise FredKeyMissingError(
             "FRED_API_KEY is not set. Get a free key at "
             "https://fredaccount.stlouisfed.org/apikeys and export it as "
             "FRED_API_KEY (nothing is stored in the repo)."

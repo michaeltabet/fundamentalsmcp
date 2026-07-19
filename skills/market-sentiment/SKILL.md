@@ -1,13 +1,13 @@
 ---
 name: market-sentiment
-description: Gather and clearly-labelled external sentiment on a company — retail/Reddit chatter, news headlines, the narrative — as a SEPARATE, sourced layer alongside the edgar MCP's primary-source financials. Use when the user asks "what are people saying about", "sentiment on", "the Reddit take", "recent headlines", "what's the narrative". Uses web search/fetch (no scraping keys). Sentiment is never presented as fact and never overrides the filings.
+description: Gather and clearly-labelled external sentiment on a company — retail/Reddit chatter, news headlines, the narrative — as a SEPARATE, sourced layer alongside the fundamentals MCP's primary-source financials. Use when the user asks "what are people saying about", "sentiment on", "the Reddit take", "recent headlines", "what's the narrative". Uses web search/fetch (no scraping keys). Sentiment is never presented as fact and never overrides the filings.
 ---
 
 # Market sentiment (a labelled layer, never the truth)
 
 You are gathering what *other people are saying* about a company — news, retail
 forums, the prevailing narrative — to sit NEXT TO, never on top of, the
-primary-source analysis from the `edgar` MCP. This exists because the user
+primary-source analysis from the `fundamentals` MCP. This exists because the user
 sometimes wants the mood; it must never contaminate the facts.
 
 ## Hard rules
@@ -41,7 +41,7 @@ sometimes wants the mood; it must never contaminate the facts.
    dominant view, the bull/bear points people actually make, and the tone
    (euphoric / fearful / mixed). Never launder an anonymous claim into a fact.
 4. **Fact-check the loud claims.** Take the 2–3 most consequential assertions
-   and check each against the filings via the edgar MCP. Report which hold up
+   and check each against the filings via the fundamentals MCP. Report which hold up
    and which don't, with citations.
 5. **Deliver.** A short, clearly-labelled "External sentiment (opinion, dated)"
    block: (a) headline narrative, (b) retail take + tone, (c) the

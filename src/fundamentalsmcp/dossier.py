@@ -264,6 +264,6 @@ def build(company: str, years: int = 5, ticker: str | None = None,
                  "trailing_pe", "forward_pe", "ev_to_ebitda", "price_to_book",
                  "dividend_yield")
             }
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             dossier["market"] = {"error": str(e)}
     return dossier

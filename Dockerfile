@@ -13,4 +13,4 @@ RUN mkdir -p /cache && chmod 777 /cache
 
 EXPOSE 8000
 USER 10001
-ENTRYPOINT ["edgar-mcp"]
+ENTRYPOINT ["fundamentalsmcp"]

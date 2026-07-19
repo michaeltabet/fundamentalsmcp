@@ -5,8 +5,8 @@ import sys
 
 from edgar import set_identity
 
-from edgar_mcp import server as s
-from edgar_mcp.util import IDENTITY
+from fundamentalsmcp import server as s
+from fundamentalsmcp.util import IDENTITY
 
 set_identity(IDENTITY)
 

@@ -19,7 +19,7 @@ import threading
 
 from .util import filing_for
 
-LANCE_DIR = pathlib.Path.home() / ".cache" / "edgar-mcp" / "lancedb"
+LANCE_DIR = pathlib.Path.home() / ".cache" / "fundamentalsmcp" / "lancedb"
 TABLE = "filing_chunks"
 MODEL_NAME = "BAAI/bge-small-en-v1.5"  # 384-dim, small ONNX
 
@@ -84,7 +84,7 @@ def index_filing(accession: str, max_chars_per_section: int = 60_000) -> dict:
         return {"accession": accession, "indexed": 0, "note": "no text sections"}
 
     vectors = _embed(chunks)
-    rows = [{**m, "vector": v} for m, v in zip(rows_meta, vectors)]
+    rows = [{**m, "vector": v} for m, v in zip(rows_meta, vectors, strict=True)]
 
     with _lock:
         db = _connect()
@@ -139,5 +139,5 @@ def status() -> dict:
         rows = tbl.to_pandas()[["accession", "company", "form"]]
     by = (rows.groupby(["accession", "company", "form"]).size()
           .reset_index(name="chunks"))
-    return {"lance_dir": str(LANCE_DIR), "indexed_chunks": int(len(rows)),
+    return {"lance_dir": str(LANCE_DIR), "indexed_chunks": len(rows),
             "filings": by.to_dict(orient="records")}

@@ -1,5 +1,5 @@
 [project]
-name = "edgar-mcp"
+name = "fundamentalsmcp"
 version = "0.1.0"
 description = "Deep, structured MCP access to SEC EDGAR: layered XBRL fact/definition/calc-tree tooling, a queryable DuckDB fact store, global market data (yfinance) and FRED macro, section extraction, full-text search, insider parsing"
 readme = "README.md"
@@ -22,8 +22,22 @@ dependencies = [
 ]
 
 [project.scripts]
-edgar-mcp = "edgar_mcp.server:main"
+fundamentalsmcp = "fundamentalsmcp.server:main"
+edgar-mcp = "fundamentalsmcp.server:main"  # legacy alias
 
 [build-system]
 requires = ["uv_build>=0.11.25,<0.12.0"]
 build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF"]
+ignore = [
+    "RUF001",  # em-dashes/× in user-facing strings are deliberate
+]
+[tool.ruff.lint.per-file-ignores]
+# F() is the finding constructor — terse on purpose, used hundreds of times
+"src/fundamentalsmcp/forensic.py" = ["N802"]

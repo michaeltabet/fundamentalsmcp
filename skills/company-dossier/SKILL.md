@@ -1,12 +1,12 @@
 ---
 name: company-dossier
-description: Full primary-source company workup on a single filer using the edgar MCP — the business model, the risks, the multi-year financials + ratios, market multiples, and insider activity, assembled into one analyst-grade dossier. Use when the user says "work up", "full dossier", "tell me everything about", "analyze this company", "is this a good business", or wants a complete tear-sheet. Every claim traces to a filing. Never opinions about what other investors are doing.
+description: Full primary-source company workup on a single filer using the fundamentals MCP — the business model, the risks, the multi-year financials + ratios, market multiples, and insider activity, assembled into one analyst-grade dossier. Use when the user says "work up", "full dossier", "tell me everything about", "analyze this company", "is this a good business", or wants a complete tear-sheet. Every claim traces to a filing. Never opinions about what other investors are doing.
 ---
 
 # Company dossier (primary-source workup)
 
 You are producing a complete, analyst-grade profile of ONE company from its
-own filings, using the `edgar` MCP. The whole point is that this is grounded
+own filings, using the `fundamentals` MCP. The whole point is that this is grounded
 in primary sources — the company's 10-K, its XBRL facts, its insider forms —
 not vibes, not headlines, not what "the market thinks".
 

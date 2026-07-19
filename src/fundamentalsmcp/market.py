@@ -12,6 +12,8 @@ join against `facts` in one SQL query.
 
 from __future__ import annotations
 
+import contextlib
+
 from . import store
 
 
@@ -26,15 +28,11 @@ def quote(symbol: str) -> dict:
     exchange, and headline valuation ratios where Yahoo provides them."""
     t = _ticker(symbol)
     info = {}
-    try:
+    with contextlib.suppress(Exception):  # fall back to fast_info below
         info = dict(t.get_info())
-    except Exception:  # noqa: BLE001 — fall back to fast_info
-        pass
     fast = {}
-    try:
+    with contextlib.suppress(Exception):
         fast = dict(t.fast_info)
-    except Exception:  # noqa: BLE001
-        pass
 
     def pick(*keys):
         for k in keys:
@@ -85,10 +83,8 @@ def history(symbol: str, period: str = "5y", interval: str = "1d",
         df["adj_close"] = df.get("close")
     df["date"] = df["date"].astype(str).str.slice(0, 10)
     currency = None
-    try:
+    with contextlib.suppress(Exception):
         currency = dict(t.fast_info).get("currency")
-    except Exception:  # noqa: BLE001
-        pass
     df["currency"] = currency
 
     persisted = 0
@@ -99,7 +95,7 @@ def history(symbol: str, period: str = "5y", interval: str = "1d",
     return {
         "symbol": symbol.upper(),
         "currency": currency,
-        "rows": int(len(df)),
+        "rows": len(df),
         "persisted": persisted,
         "range": [str(df.iloc[0]["date"]), str(last["date"])],
         "latest_close": None if last.get("close") is None else float(last["close"]),

@@ -1,4 +1,4 @@
-# edgar-mcp
+# fundamentalsmcp
 
 Deep, structured MCP access to SEC EDGAR — plus a queryable fact store,
 global market data, macro, and semantic search over filing text.
@@ -16,7 +16,7 @@ parsing, plus direct SEC APIs (EFTS full-text search, `companyconcept` fact
 history), the FASB/SEC taxonomy documentation labels, DuckDB (fact store),
 Yahoo Finance via yfinance (market data), FRED (macro, bring-your-own-key),
 and LanceDB + fastembed (offline semantic search). Local caches live in
-`~/.cache/edgar-mcp/`.
+`~/.cache/fundamentalsmcp/`.
 
 ## Why this exists
 
@@ -118,14 +118,14 @@ investors are doing; sentiment is a walled, labelled layer):
 ## Run
 
 ```sh
-uv run edgar-mcp                      # stdio MCP server
+uv run fundamentalsmcp                      # stdio MCP server
 uv run python tests/live_smoke.py     # live end-to-end test against EDGAR
 ```
 
 Register in Claude Code:
 
 ```sh
-claude mcp add edgar --scope user -- uv run --directory /path/to/edgar-mcp edgar-mcp
+claude mcp add fundamentals --scope user -- uv run --directory /path/to/fundamentalsmcp fundamentalsmcp
 ```
 
 Configuration (environment variables):
@@ -137,7 +137,7 @@ Configuration (environment variables):
 
 Direct SEC calls are throttled under 10 req/s; parsed XBRL objects are
 LRU-cached per accession; taxonomy definitions, the DuckDB fact store, and
-the vector index cache under `~/.cache/edgar-mcp/`.
+the vector index cache under `~/.cache/fundamentalsmcp/`.
 
 ## Example workflow (spin-off hunting)
 

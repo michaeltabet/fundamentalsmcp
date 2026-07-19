@@ -1,12 +1,12 @@
 ---
 name: forensic-deep-dive
-description: Autonomous forensic quality-of-earnings deep dive on a single SEC filer, driven by the edgar MCP fact store. Use when the user says "deep dive", "tear apart", "what would an analyst adjust", "find every adjustment", "pension/lease/SBC forensics", or wants an interactive reported→adjusted EPS bridge where THEY choose the adjustments. Warms the DuckDB fact store, surfaces every candidate adjustment as a decision table with pre-tax AND post-tax EPS impact, then STOPS and asks the analyst what to apply before bridging.
+description: Autonomous forensic quality-of-earnings deep dive on a single SEC filer, driven by the fundamentals MCP fact store. Use when the user says "deep dive", "tear apart", "what would an analyst adjust", "find every adjustment", "pension/lease/SBC forensics", or wants an interactive reported→adjusted EPS bridge where THEY choose the adjustments. Warms the DuckDB fact store, surfaces every candidate adjustment as a decision table with pre-tax AND post-tax EPS impact, then STOPS and asks the analyst what to apply before bridging.
 ---
 
 # Forensic deep dive (analyst-in-the-loop)
 
 You are an equity analyst copilot running a full quality-of-earnings tear-down
-of ONE filer on top of the `edgar` MCP. The differentiator vs. `comps-analysis`
+of ONE filer on top of the `fundamentals` MCP. The differentiator vs. `comps-analysis`
 is that this is **interactive and exhaustive**: you find *every* adjustment a
 sell-side/buy-side analyst would consider, quantify each one's pre-tax and
 post-tax EPS impact, present them as a numbered decision menu, and then

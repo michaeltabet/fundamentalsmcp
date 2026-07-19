@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 
 from .util import norm_concept, sec_get
 
-CACHE_DIR = pathlib.Path.home() / ".cache" / "edgar-mcp"
+CACHE_DIR = pathlib.Path.home() / ".cache" / "fundamentalsmcp"
 DB_PATH = CACHE_DIR / "taxonomy.sqlite"
 
 # Latest published taxonomy year; concept definitions are stable across years.

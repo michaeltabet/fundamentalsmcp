@@ -1,0 +1,17 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  lint-and-import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Lint
+        run: uvx ruff check src/
+      - name: Import + tool registration smoke (no network)
+        run: |
+          uv sync -q
+          uv run python -c "from fundamentalsmcp import server; n=len(server.mcp._tool_manager.list_tools()); assert n>=31, n; print(n,'tools')"

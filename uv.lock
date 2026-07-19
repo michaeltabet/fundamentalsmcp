@@ -336,31 +336,6 @@ wheels = [
 ]
 
 [[package]]
-name = "edgar-mcp"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "duckdb" },
-    { name = "edgartools" },
-    { name = "fastembed" },
-    { name = "httpx" },
-    { name = "lancedb" },
-    { name = "mcp" },
-    { name = "yfinance" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "duckdb", specifier = ">=1.5.4" },
-    { name = "edgartools", specifier = ">=5.40.1" },
-    { name = "fastembed", specifier = ">=0.8.0" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "lancedb", specifier = ">=0.34.0" },
-    { name = "mcp", specifier = ">=1.9" },
-    { name = "yfinance", specifier = ">=1.5.1" },
-]
-
-[[package]]
 name = "edgartools"
 version = "5.40.1"
 source = { registry = "https://pypi.org/simple" }
@@ -437,6 +412,31 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/10/a1/ae4e3e5003468d6391d2c77b6fa1cd73bd5d13511d81c642d7b28ac90ed4/fsspec-2026.6.0.tar.gz", hash = "sha256:f5bac145310fe30e16e1471bd6840b2d990d609e872251d7e674241822abf01a", size = 313646, upload-time = "2026-06-16T01:57:28.105Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e5/22/4222d7ddf3da30f363edaa98e329c2bce6c65497c9cb2810931c8b2c0fbc/fsspec-2026.6.0-py3-none-any.whl", hash = "sha256:02e0b71817df9b2169dc30a16832045764def1191b43dcff5bb85bdee212d2a1", size = 203949, upload-time = "2026-06-16T01:57:26.358Z" },
+]
+
+[[package]]
+name = "fundamentalsmcp"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "duckdb" },
+    { name = "edgartools" },
+    { name = "fastembed" },
+    { name = "httpx" },
+    { name = "lancedb" },
+    { name = "mcp" },
+    { name = "yfinance" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "duckdb", specifier = ">=1.5.4" },
+    { name = "edgartools", specifier = ">=5.40.1" },
+    { name = "fastembed", specifier = ">=0.8.0" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "lancedb", specifier = ">=0.34.0" },
+    { name = "mcp", specifier = ">=1.9" },
+    { name = "yfinance", specifier = ">=1.5.1" },
 ]
 
 [[package]]

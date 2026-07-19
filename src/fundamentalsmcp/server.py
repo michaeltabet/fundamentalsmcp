@@ -30,7 +30,7 @@ from .util import (
     xbrl_for,
 )
 
-mcp = FastMCP("edgar")
+mcp = FastMCP("fundamentals")
 
 
 # --------------------------------------------------------------------------- #
@@ -211,7 +211,9 @@ def filing_contents(accession_no: str) -> str:
 
 
 @mcp.tool()
-def read_section(accession_no: str, item: str | None = None, max_chars: int = 30_000, offset: int = 0) -> str:
+def read_section(
+    accession_no: str, item: str | None = None, max_chars: int = 30_000, offset: int = 0
+) -> str:
     """Extract one item/section of a 10-K, 10-Q, 8-K, or 20-F as clean text.
 
     `item` examples: "Item 1A" (risk factors), "Item 7" (MD&A) for a 10-K;
@@ -567,7 +569,7 @@ def explain_number(
         or (rows.iloc[0]["balance"] if "balance" in rows else None),
         "balance_meaning": None,
         "period_type": el.period_type if el is not None else None,
-        "facts_in_filing": int(len(rows)),
+        "facts_in_filing": len(rows),
         "facts": facts_out,
     }
     bal = out["balance"]
@@ -663,7 +665,7 @@ def search_facts(
         dims = getattr(ctx, "dimensions", None) if ctx is not None else None
         if dims:
             r["dimensions"] = {a.split(":")[-1]: m.split(":")[-1] for a, m in dims.items()}
-    return jdump({"total_matches": int(len(df)), "facts": records})
+    return jdump({"total_matches": len(df), "facts": records})
 
 
 @mcp.tool()
@@ -902,11 +904,10 @@ def restatement_check(company: str, years: int = 3) -> str:
     (NT 10-K / NT 10-Q). Any 4.02 is a major earnings-quality event.
     """
     c = company_for(company)
+    import contextlib
     cutoff = None
-    try:
+    with contextlib.suppress(Exception):
         cutoff = (dt.date.today() - dt.timedelta(days=365 * years)).isoformat()
-    except Exception:
-        pass
     hits: dict[str, list] = {"auditor_change_8k_401": [], "non_reliance_8k_402": [],
                              "amended_reports": [], "late_filings": []}
     for f in c.get_filings(form=["8-K", "10-K/A", "10-Q/A", "NT 10-K", "NT 10-Q"]).head(300):
@@ -1079,7 +1080,7 @@ def fund_holdings(manager: str, min_value: float = 0, limit: int = 50) -> str:
             "accession_no": f.accession_no,
             "period": str(getattr(f, "report_date", "") or "") or None,
             "filed": str(f.filing_date),
-            "total_positions": int(len(df)),
+            "total_positions": len(df),
             "total_value": total,
             "total_value_formatted": fmt_value(total),
             "holdings": rows,
@@ -1184,7 +1185,7 @@ def fred_search(query: str, limit: int = 15) -> str:
     """
     try:
         return jdump(macro.search(query, limit=limit))
-    except macro.FredKeyMissing as e:
+    except macro.FredKeyMissingError as e:
         return jdump({"error": str(e)})
 
 
@@ -1203,7 +1204,7 @@ def fred_series(
     try:
         return jdump(macro.series(series_id, start=start, end=end,
                                   persist=persist))
-    except macro.FredKeyMissing as e:
+    except macro.FredKeyMissingError as e:
         return jdump({"error": str(e)})
 
 

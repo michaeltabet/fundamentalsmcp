@@ -220,7 +220,8 @@ def calc_placement(x, element_id: str) -> str | None:
         if chain_set & op:
             return "inside operating income (and therefore in pre-tax income and EPS)"
         if chain_set & pretax:
-            return "below operating income but ABOVE the tax line — flows into pre-tax income and EPS"
+            return ("below operating income but ABOVE the tax line —"
+                    " flows into pre-tax income and EPS")
         if chain_set & ni:
             return "between pre-tax income and net income (tax-line area) — still in EPS"
         if "us-gaap_NetCashProvidedByUsedInOperatingActivities" in chain_set or (
@@ -241,8 +242,6 @@ def pct(x_val, base) -> float | None:
 
 def analyze(x) -> dict:
     facts, periods, instants = build_fact_maps(x)
-    p0 = periods[0] if periods else None
-
     bench = {}
     series = {}
     for name, cands in [
@@ -283,7 +282,8 @@ def analyze(x) -> dict:
                     "concept": concept.replace("_", ":", 1),
                     "label": next(iter(el.labels.values()), None) if el else None,
                     "values_by_period": {
-                        p: fmt_value(v) for p, v in zip(periods, per_period)
+                        p: fmt_value(v)
+                        for p, v in zip(periods, per_period, strict=False)
                     },
                     "pct_of_revenue": pct(cur, bench["revenue"]),
                     "pct_of_operating_income": pct(cur, bench["operating_income"]),
@@ -328,10 +328,10 @@ def analyze(x) -> dict:
     tax_s, pre_s = series["tax_expense"], series["pretax_income"]
     etr = [
         round(100 * t / p, 1) if t is not None and p else None
-        for t, p in zip(tax_s, pre_s)
+        for t, p in zip(tax_s, pre_s, strict=False)
     ]
     if any(e is not None for e in etr):
-        d = {"by_period": dict(zip(periods, etr))}
+        d = {"by_period": dict(zip(periods, etr, strict=False))}
         real = [e for e in etr if e is not None]
         if len(real) >= 2 and abs(real[0] - real[1]) > 3:
             d["flag"] = (

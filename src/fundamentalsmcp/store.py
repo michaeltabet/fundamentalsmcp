@@ -21,9 +21,9 @@ import json
 import pathlib
 import threading
 
-from .util import filing_for, norm_concept, xbrl_for
+from .util import filing_for, xbrl_for
 
-CACHE_DIR = pathlib.Path.home() / ".cache" / "edgar-mcp"
+CACHE_DIR = pathlib.Path.home() / ".cache" / "fundamentalsmcp"
 DB_PATH = CACHE_DIR / "facts.duckdb"
 
 _lock = threading.Lock()
@@ -247,7 +247,7 @@ def warm(company: str, forms: list[str] | None = None, limit: int = 4,
     for form in forms:
         try:
             filings = c.get_filings(form=form).head(limit)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             errors.append({"form": form, "error": str(e)})
             continue
         for f in filings:
@@ -259,7 +259,7 @@ def warm(company: str, forms: list[str] | None = None, limit: int = 4,
                 (skipped if res["status"] == "already_ingested" else ingested).append(
                     {"accession": acc, "form": form, "facts": res.get("fact_count")}
                 )
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 errors.append({"accession": acc, "form": form, "error": str(e)})
     return {"company": company, "ingested": ingested, "skipped": skipped,
             "errors": errors}
@@ -351,7 +351,7 @@ def query(sql: str, limit: int = 200) -> dict:
             cols = [d[0] for d in rel.description]
             rows = rel.fetchmany(limit + 1)
             truncated = len(rows) > limit
-            records = [dict(zip(cols, r)) for r in rows[:limit]]
+            records = [dict(zip(cols, r, strict=False)) for r in rows[:limit]]
             return {"columns": cols, "row_count": len(records),
                     "truncated": truncated, "rows": records}
         finally:
