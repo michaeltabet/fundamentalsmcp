@@ -120,6 +120,18 @@ CREATE TABLE IF NOT EXISTS macro(
 """
 
 
+_DDL_CALC_EDGES = """
+CREATE TABLE IF NOT EXISTS calc_edges(
+    accession   VARCHAR,
+    company     VARCHAR,
+    statement_role VARCHAR,
+    parent      VARCHAR,
+    child       VARCHAR,
+    weight      DOUBLE
+)
+"""
+
+
 def _connect():
     import duckdb
 
@@ -129,7 +141,27 @@ def _connect():
     conn.execute(_DDL_FACTS)
     conn.execute(_DDL_PRICES)
     conn.execute(_DDL_MACRO)
+    conn.execute(_DDL_CALC_EDGES)
     return conn
+
+
+def _calc_edge_rows(x, accession: str, company: str | None) -> list[tuple]:
+    """(accession, company, role, parent, child, weight) for every
+    calculation-tree arc in the filing — the knowledge-graph edge list."""
+    rows = []
+    for role, tree in (getattr(x, "calculation_trees", None) or {}).items():
+        role_short = role.rsplit("/", 1)[-1]
+        for concept, node in (getattr(tree, "all_nodes", {}) or {}).items():
+            parent = getattr(node, "parent", None)
+            if parent:
+                # calc trees use underscore ids; store colon form to match facts
+                rows.append(
+                    (accession, company, role_short,
+                     str(parent).replace("_", ":", 1),
+                     str(concept).replace("_", ":", 1),
+                     getattr(node, "weight", None))
+                )
+    return rows
 
 
 def _dimensions_for(x, context_ref):
@@ -209,6 +241,12 @@ def ingest(accession: str, force: bool = False) -> dict:
             df, meta = _enriched_frame(accession)
             conn.execute("DELETE FROM facts WHERE accession=?", [accession])
             conn.execute("DELETE FROM filings WHERE accession=?", [accession])
+            conn.execute("DELETE FROM calc_edges WHERE accession=?", [accession])
+            edges = _calc_edge_rows(xbrl_for(accession), accession, meta["company"])
+            if edges:
+                conn.executemany(
+                    "INSERT INTO calc_edges VALUES(?,?,?,?,?,?)", edges
+                )
             conn.register("df_facts", df)
             conn.execute(
                 f"INSERT INTO facts SELECT {', '.join(_FACT_COLUMNS)} FROM df_facts"
@@ -322,6 +360,66 @@ def upsert_macro(series_id: str, df, title: str | None = None,
             return len(df)
         finally:
             conn.close()
+
+
+def concept_graph(accession: str, concept: str, direction: str = "down",
+                  depth: int = 3) -> dict:
+    """Walk the calculation knowledge graph from one concept.
+
+    direction 'down' = what sums INTO this concept (descendants);
+    'up' = what this concept sums into (ancestors). Each edge carries its
+    weight; each node gets its consolidated annual value when one exists."""
+    accession = accession.strip()
+    concept = concept.strip().replace("_", ":", 1) if ":" not in concept else concept.strip()
+    if direction not in ("down", "up"):
+        raise ValueError("direction must be 'down' or 'up'")
+    join_from, join_to = (("parent", "child") if direction == "down"
+                          else ("child", "parent"))
+    sql = f"""
+        WITH RECURSIVE walk(node, via, weight, statement_role, lvl) AS (
+            SELECT {join_to}, {join_from}, weight, statement_role, 1
+            FROM calc_edges WHERE accession = ? AND {join_from} = ?
+            UNION ALL
+            SELECT e.{join_to}, e.{join_from}, e.weight, e.statement_role, w.lvl + 1
+            FROM calc_edges e JOIN walk w
+              ON e.{join_from} = w.node AND e.accession = ?
+            WHERE w.lvl < ?
+        )
+        SELECT DISTINCT w.node, w.via, w.weight, w.statement_role, w.lvl,
+               f.numeric_value AS value
+        FROM walk w
+        LEFT JOIN facts f
+          ON f.accession = ? AND f.concept = w.node
+         AND NOT f.is_dimensioned AND f.numeric_value IS NOT NULL
+        QUALIFY row_number() OVER (
+            PARTITION BY w.node, w.via, w.statement_role
+            ORDER BY f.period_end DESC NULLS LAST
+        ) = 1
+        ORDER BY w.lvl, w.statement_role, w.node
+    """
+    with _lock:
+        conn = _connect()
+        try:
+            rows = conn.execute(
+                sql, [accession, concept, accession, depth, accession]
+            ).fetchall()
+        finally:
+            conn.close()
+    edges = [
+        {"concept": n, "linked_via": v, "weight": w, "statement_role": r,
+         "depth": lvl, "value": val}
+        for n, v, w, r, lvl, val in rows
+    ]
+    return {
+        "accession": accession,
+        "root": concept,
+        "direction": direction,
+        "edge_count": len(edges),
+        "edges": edges,
+        "note": ("empty graph — warm the filing first (warm_fact_store) or "
+                 "re-warm with force=true if it was ingested before calc "
+                 "edges existed") if not edges else None,
+    }
 
 
 _FORBIDDEN = ("insert", "update", "delete", "drop", "create", "alter",

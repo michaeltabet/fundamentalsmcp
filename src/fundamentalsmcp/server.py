@@ -15,7 +15,7 @@ import os
 
 from mcp.server.fastmcp import FastMCP
 
-from . import dossier, forensic, macro, market, quality, store, taxonomy, vector
+from . import dossier, forensic, macro, market, quality, store, taxonomy, uk, vector
 from .util import (
     IDENTITY,
     company_for,
@@ -1137,6 +1137,21 @@ def query_fact_store(sql: str, limit: int = 200) -> str:
 
 
 @mcp.tool()
+def concept_graph(
+    accession_no: str, concept: str, direction: str = "down", depth: int = 3
+) -> str:
+    """Walk the calculation KNOWLEDGE GRAPH of a warmed filing from one
+    concept. direction='down' → everything that sums INTO it (with weights
+    and values, e.g. OperatingIncomeLoss → GrossProfit - OperatingExpenses →
+    …); direction='up' → what it rolls up into. Depth-limited recursive
+    traversal over the calc_edges table. Warm the filing first
+    (warm_fact_store; force=true if warmed before graph support).
+    """
+    return jdump(store.concept_graph(accession_no, concept,
+                                     direction=direction, depth=depth))
+
+
+@mcp.tool()
 def fact_store_status() -> str:
     """What's currently warmed into the fact store: filing/fact counts,
     per-company totals, and the most recently ingested filings."""
@@ -1267,6 +1282,47 @@ def semantic_search_filings(
 def vector_store_status() -> str:
     """What filing text is currently in the vector index (chunks per filing)."""
     return jdump(vector.status())
+
+
+# --------------------------------------------------------------------------- #
+# UK Companies House — first non-US fundamentals source (BYO key)
+# --------------------------------------------------------------------------- #
+
+
+def _uk_guard(fn, *args, **kwargs) -> str:
+    try:
+        return jdump(fn(*args, **kwargs))
+    except uk.CompaniesHouseKeyMissingError as e:
+        return jdump({"error": str(e)})
+
+
+@mcp.tool()
+def uk_find_company(query: str, limit: int = 10) -> str:
+    """Search UK Companies House by company name or number. Returns company
+    numbers to feed uk_company_profile / uk_filings. Requires
+    COMPANIES_HOUSE_API_KEY (free, bring your own).
+    """
+    return _uk_guard(uk.find_company, query, limit=limit)
+
+
+@mcp.tool()
+def uk_company_profile(company_number: str) -> str:
+    """UK company profile + officers + persons with significant control (PSC —
+    the beneficial-ownership register: who actually controls the company;
+    'no PSC' on an active trading company is itself a flag). Includes accounts
+    status (type, made-up-to, overdue), charges, insolvency history.
+    """
+    return _uk_guard(uk.profile, company_number)
+
+
+@mcp.tool()
+def uk_filings(company_number: str, category: str | None = None,
+               limit: int = 25) -> str:
+    """Filing history for a UK company (category: accounts,
+    confirmation-statement, mortgage/charges, …). Accounts entries carry the
+    document ids for the filed iXBRL accounts.
+    """
+    return _uk_guard(uk.filings, company_number, category=category, limit=limit)
 
 
 def main() -> None:

@@ -64,6 +64,7 @@ feature requests are as useful as PRs. See [CONTRIBUTING.md](CONTRIBUTING.md).
 |---|---|
 | `warm_fact_store` | parse a company's filings once; land every tagged fact (concept · value · period · dimensions · calc weight · precision · provenance) into a local DuckDB |
 | `query_fact_store` | arbitrary **read-only** SQL across everything warmed: `facts`, `filings`, `prices`, `macro` tables — multi-year, multi-segment, multi-company questions in one query |
+| `concept_graph` | walk the calculation **knowledge graph** of a filing from any concept — down (what sums into it, with weights and values) or up (what it rolls into), recursive, depth-limited |
 | `fact_store_status` | what's loaded |
 
 **Dossier** (the capstone)
@@ -84,6 +85,13 @@ feature requests are as useful as PRs. See [CONTRIBUTING.md](CONTRIBUTING.md).
 | `index_filing_text` | chunk + embed every section of a filing into a local LanceDB index (small ONNX embedder — no torch, nothing leaves your machine) |
 | `semantic_search_filings` | find where filings discuss a concept even when the wording differs (supply concentration, going concern, a specific lawsuit), with section + accession provenance |
 | `vector_store_status` | what's indexed |
+
+**UK Companies House** (first non-US source, BYO key)
+| tool | what it does |
+|---|---|
+| `uk_find_company` | search UK companies by name/number |
+| `uk_company_profile` | profile + officers + **persons with significant control** (the beneficial-ownership register — who actually controls the company), accounts status, charges, insolvency history |
+| `uk_filings` | filing history incl. the filed accounts documents |
 
 **Forensic** (evidence-first; nothing adjusted without a human decision)
 | tool | what it does |
@@ -133,6 +141,7 @@ Configuration (environment variables):
 - `EDGAR_IDENTITY` — **required by SEC fair-use policy**: your name + email
   for the User-Agent (e.g. `"Jane Doe jane@example.com"`)
 - `FRED_API_KEY` — optional, for macro tools ([free key](https://fredaccount.stlouisfed.org/apikeys))
+- `COMPANIES_HOUSE_API_KEY` — optional, for UK tools ([free key](https://developer.company-information.service.gov.uk))
 - `EDGAR_MCP_TRANSPORT=streamable-http` (+ `EDGAR_MCP_HOST`/`EDGAR_MCP_PORT`) — serve over HTTP instead of stdio
 
 Direct SEC calls are throttled under 10 req/s; parsed XBRL objects are
