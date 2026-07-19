@@ -15,7 +15,7 @@ import os
 
 from mcp.server.fastmcp import FastMCP
 
-from . import forensic, quality, taxonomy
+from . import dossier, forensic, macro, market, quality, store, taxonomy, vector
 from .util import (
     IDENTITY,
     company_for,
@@ -1085,6 +1085,187 @@ def fund_holdings(manager: str, min_value: float = 0, limit: int = 50) -> str:
             "holdings": rows,
         }
     )
+
+
+# --------------------------------------------------------------------------- #
+# persistent fact store — cross-filing SQL over parsed XBRL
+# --------------------------------------------------------------------------- #
+
+
+@mcp.tool()
+def warm_fact_store(
+    company: str,
+    forms: list[str] | None = None,
+    limit: int = 4,
+    force: bool = False,
+) -> str:
+    """Parse a company's filings and land every tagged XBRL fact into the
+    local DuckDB fact store, so you can then query them with SQL across
+    filings (no per-filing re-parse, no 40k truncation wall).
+
+    company: ticker / CIK / name. forms: e.g. ["10-K","10-Q"] (default 10-K).
+    limit: most-recent N filings per form. force: re-ingest even if present.
+    Run this first, then use `query_fact_store`. Idempotent.
+    """
+    return jdump(store.warm(company, forms=forms, limit=limit, force=force))
+
+
+@mcp.tool()
+def query_fact_store(sql: str, limit: int = 200) -> str:
+    """Run a READ-ONLY SQL SELECT across every fact you've warmed into the store.
+
+    Two tables:
+      facts(accession, cik, company, form, filed_date, concept, label, value,
+            numeric_value, balance, preferred_sign, weight, period_type,
+            period_key, period_start, period_end, period_instant, fiscal_year,
+            fiscal_period, is_dimensioned, dimensions (JSON {axis:member}),
+            decimals, unit_ref, currency, statement_type, statement_name,
+            fact_id, context_ref)
+      filings(accession, cik, company, form, filed_date, fiscal_year,
+              fiscal_period, period_end, fact_count, ingested_at)
+
+    This is the differentiator: ask multi-year, multi-segment, multi-company
+    questions in one query. Examples:
+      - "SELECT fiscal_year, numeric_value FROM facts WHERE concept='us-gaap:Revenues'
+         AND company='Apple Inc.' AND NOT is_dimensioned ORDER BY fiscal_year"
+      - segment slices via json_extract(dimensions,'$.StatementBusinessSegmentsAxis')
+    DuckDB SQL dialect; JSON via json_extract / dimensions->>'$.Axis'. Only a
+    single SELECT/WITH statement; DDL/DML is rejected. Warm data first.
+    """
+    return jdump(store.query(sql, limit=limit))
+
+
+@mcp.tool()
+def fact_store_status() -> str:
+    """What's currently warmed into the fact store: filing/fact counts,
+    per-company totals, and the most recently ingested filings."""
+    return jdump(store.status())
+
+
+# --------------------------------------------------------------------------- #
+# market data (Yahoo Finance) — global tickers, prices, valuation multiples
+# --------------------------------------------------------------------------- #
+
+
+@mcp.tool()
+def market_quote(symbol: str) -> str:
+    """Live snapshot for a GLOBAL ticker via Yahoo Finance: price, market cap,
+    shares outstanding, enterprise value, and valuation ratios (trailing/forward
+    P/E, EV/EBITDA, P/B, dividend yield). Works for US and international
+    tickers with the right suffix — Singapore SGX `D05.SI`, London `.L`,
+    Hong Kong `.HK`. This is what turns EDGAR fundamentals into real multiples
+    (EDGAR itself has no prices). No API key needed.
+    """
+    return jdump(market.quote(symbol))
+
+
+@mcp.tool()
+def market_history(
+    symbol: str, period: str = "5y", interval: str = "1d", persist: bool = True
+) -> str:
+    """OHLCV price history for a global ticker. period: 1mo/6mo/1y/5y/10y/max;
+    interval: 1d/1wk/1mo. When persist=true (default) the series is upserted
+    into the DuckDB `prices` table so you can SQL-join prices against `facts`.
+    """
+    return jdump(market.history(symbol, period=period, interval=interval,
+                                persist=persist))
+
+
+# --------------------------------------------------------------------------- #
+# macro data (FRED) — bring-your-own-key (FRED_API_KEY)
+# --------------------------------------------------------------------------- #
+
+
+@mcp.tool()
+def fred_search(query: str, limit: int = 15) -> str:
+    """Search FRED for macro series by text (e.g. "10-year treasury",
+    "Singapore CPI", "unemployment"). Returns series ids to feed fred_series.
+    Requires FRED_API_KEY in the environment (free key, nothing stored in repo).
+    """
+    try:
+        return jdump(macro.search(query, limit=limit))
+    except macro.FredKeyMissing as e:
+        return jdump({"error": str(e)})
+
+
+@mcp.tool()
+def fred_series(
+    series_id: str,
+    start: str | None = None,
+    end: str | None = None,
+    persist: bool = True,
+) -> str:
+    """Observations for one FRED macro series (e.g. CPIAUCSL, DGS10, UNRATE,
+    and international series). start/end are YYYY-MM-DD. When persist=true the
+    series is upserted into the DuckDB `macro` table for SQL-joining against
+    `facts` and `prices`. Requires FRED_API_KEY (bring your own).
+    """
+    try:
+        return jdump(macro.series(series_id, start=start, end=end,
+                                  persist=persist))
+    except macro.FredKeyMissing as e:
+        return jdump({"error": str(e)})
+
+
+# --------------------------------------------------------------------------- #
+# CFA full-financials dossier — the capstone
+# --------------------------------------------------------------------------- #
+
+
+@mcp.tool()
+def company_dossier(
+    company: str, years: int = 5, ticker: str | None = None, warm: bool = True
+) -> str:
+    """The full CFA-grade financial profile of one filer in a single call.
+
+    Warms the fact store (unless warm=false), then assembles a multi-year
+    three-statement spine (income statement, balance sheet, cash flow) with
+    each line resolved through a priority list of XBRL concept aliases (tags
+    drift across years), a complete ratio suite (profitability, DuPont ROE
+    decomposition, returns, liquidity, leverage & coverage, cash quality /
+    accruals), YoY growth, and — if `ticker` is given — live market multiples
+    (P/E, EV/EBITDA, P/B). Every reported line carries the us-gaap concept it
+    came from; a metric the filer never tagged returns null (never invented).
+
+    company: ticker/CIK/name for EDGAR. ticker: market symbol for multiples
+    (US or global, e.g. "D05.SI"). This is the one-shot "everything" view.
+    """
+    return jdump(dossier.build(company, years=years, ticker=ticker, warm=warm))
+
+
+# --------------------------------------------------------------------------- #
+# semantic search over filing text (LanceDB + fastembed, offline)
+# --------------------------------------------------------------------------- #
+
+
+@mcp.tool()
+def index_filing_text(accession_no: str) -> str:
+    """Chunk + embed every section of a filing into the local vector index so
+    it can be searched by meaning. Offline (small ONNX model, no API key).
+    Idempotent per filing. Run before semantic_search_filings.
+    """
+    return jdump(vector.index_filing(accession_no))
+
+
+@mcp.tool()
+def semantic_search_filings(
+    query: str, k: int = 8, company: str | None = None,
+    accession_no: str | None = None
+) -> str:
+    """Semantic search across indexed filing text — find where filings discuss
+    a concept even when the wording differs (supply concentration, going
+    concern, a specific lawsuit, revenue-recognition policy). Optional company/
+    accession filters. Each hit carries section + accession provenance; feed it
+    to read_section / explain_number for the underlying data. Index first.
+    """
+    return jdump(vector.search(query, k=k, company=company,
+                               accession=accession_no))
+
+
+@mcp.tool()
+def vector_store_status() -> str:
+    """What filing text is currently in the vector index (chunks per filing)."""
+    return jdump(vector.status())
 
 
 def main() -> None:
